@@ -1,6 +1,5 @@
 package com.buas_team.buas_backend2.dto;
 
-import com.sun.istack.internal.NotNull;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
@@ -16,4 +15,7 @@ public class UserDTO implements Serializable {
     @NotBlank(message = "密码不能为空")
     @Size(min = 6,max = 20,message = "密码长度在6-20")
     private String password;
+
+    @NotBlank(message = "验证码不能为空")
+    private String captchaCode;
 }
