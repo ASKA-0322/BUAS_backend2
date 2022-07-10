@@ -56,11 +56,9 @@ public class ShiroConfig {
         chainDefinition.addPathDefinitions(filterMap);
         return chainDefinition;
     }
-    //DefaultWebSecurityManager
     @Bean
     public DefaultWebSecurityManager getDefaultWebSecurityManager(@Qualifier("userRealm") UserRealm userRealm){
         DefaultWebSecurityManager securityManager=new DefaultWebSecurityManager();
-
         //关联UserRealm
         securityManager.setRealm(userRealm);
 
