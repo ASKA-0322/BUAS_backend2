@@ -2,18 +2,22 @@ package com.buas_team.buas_backend2.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.api.R;
+import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.buas_team.buas_backend2.common.Result;
+import com.buas_team.buas_backend2.dto.BankUserDTO;
 import com.buas_team.buas_backend2.dto.UserDTO;
 import com.buas_team.buas_backend2.entity.BankUser;
 import com.buas_team.buas_backend2.entity.UserInfo;
 import com.buas_team.buas_backend2.mapper.BankUserMapper;
+import com.buas_team.buas_backend2.service.BankUserService;
 import com.buas_team.buas_backend2.service.UserService;
 import com.buas_team.buas_backend2.util.JwtUtils;
 import com.buas_team.buas_backend2.util.MD5Util;
 import com.buas_team.buas_backend2.util.ShiroUtil;
+import com.buas_team.buas_backend2.vo.UserInfoVO;
 import com.google.code.kaptcha.Constants;
+import jdk.nashorn.internal.ir.BaseNode;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.UsernamePasswordToken;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
@@ -36,6 +40,8 @@ public class UserController {
     private UserService userService;
     @Resource
     private BankUserMapper bankUserMapper;
+    @Resource
+    private BankUserService bankUserService;
     @Resource
     private RedisTemplate redisTemplate;
     @Resource
@@ -72,6 +78,7 @@ public class UserController {
 
         Map<String, String> res = new HashMap<String,String>(){{
             put("username",userDTO.getUsername());
+            put("jwt",jwt);
         }};
         return Result.sucess(res);
     }
@@ -127,6 +134,25 @@ public class UserController {
     }
 
     @RequiresAuthentication
+    @PostMapping("/userinfo/{page}/{pageSize}")
+    public Result<?> selectInfo(@PathVariable Integer page,
+                                @PathVariable Integer pageSize,
+                                @RequestBody UserInfoVO userInfoVO){
+        QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
+        wrapper.eq(StringUtils.isNotBlank(userInfoVO.getConsumptionArea()),
+                "consumption_area",userInfoVO.getConsumptionArea());
+        wrapper.eq(StringUtils.isNotBlank(userInfoVO.getPayMethod()),
+                "pay_method",userInfoVO.getPayMethod());
+        wrapper.eq(userInfoVO.getPayTime()!=null,
+                "pay_time",userInfoVO.getPayTime());
+        wrapper.eq(StringUtils.isNotBlank(userInfoVO.getCommodityCategory()),
+                "commodity_category",userInfoVO.getCommodityCategory());
+        wrapper.eq("user_id",ShiroUtil.getUser().getId());
+        IPage<BankUser> ipage = bankUserService.page(new Page<>(page,pageSize),wrapper);
+        return Result.sucess(ipage);
+    }
+
+    @RequiresAuthentication
     @PostMapping("/userinfo/update")
     public Result<?> updateInfo(@Valid @RequestBody BankUser bankUser){
         int res = bankUserMapper.updateById(bankUser);
@@ -146,7 +172,25 @@ public class UserController {
     @GetMapping("/userinfo/get")
     public Result<?> get(@RequestParam Integer page,
                          @RequestParam Integer pageSize){
-        IPage<UserInfo> ipage = userService.page(new Page<>(page,pageSize));
+        QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id",ShiroUtil.getUser().getId());
+        IPage<BankUser> ipage = bankUserService.page(new Page<>(page,pageSize),wrapper);
         return Result.sucess(ipage);
+    }
+
+    @RequiresAuthentication
+    @PostMapping("/userinfo/add")
+    public Result<?> add(@Valid @RequestBody BankUserDTO bankUserDTO){
+        int res = bankUserService.add(bankUserDTO);
+        if(res>0)
+            return Result.sucess();
+        return Result.error(400,"添加错误");
+    }
+
+    @RequiresAuthentication
+    @GetMapping("/userinfo/logout")
+    public Result logout(){
+        SecurityUtils.getSubject().logout();
+        return Result.sucess();
     }
 }

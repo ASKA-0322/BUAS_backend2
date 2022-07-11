@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 public interface AreaCateVOMapper extends BaseMapper<AreaCateVO> {
-    @Select("select commodity_category,count(id) amount " +
+    @Select("select commodity_category,sum(consumption_amount) amount " +
             "from bankuser " +
             "where consumption_area= #{consumption_area} " +
             "group by commodity_category ")

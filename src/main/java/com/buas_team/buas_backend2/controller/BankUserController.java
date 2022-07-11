@@ -31,6 +31,7 @@ public class BankUserController {
         IPage<BankUser> ipage = bankUserService.page(new Page<>(page,pageSize));
         return Result.sucess(ipage);
     }
+
     @GetMapping("/user/uid/{user_id}")
     public Result<?> selectById(@PathVariable Integer user_id,@RequestParam Integer page,@RequestParam Integer pageSize){
         QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
@@ -39,6 +40,7 @@ public class BankUserController {
         IPage<BankUser> res = bankUserService.page(new Page<>(page,pageSize),wrapper);
         return Result.sucess(res);
     }
+
     @GetMapping("/user/name/{name}")
     public Result<?> selectByName(@PathVariable String name){
         QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
@@ -46,6 +48,7 @@ public class BankUserController {
         List<BankUser> bankUserList = bankUserMapper.selectList(wrapper);
         return Result.sucess(bankUserList);
     }
+
     @GetMapping("/user/area/{area}")
     public Result<?> selectByArea(@PathVariable String area){
         QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
@@ -73,6 +76,7 @@ public class BankUserController {
             return Result.sucess();
         return Result.error(400,"删除失败");
     }
+
     @PostMapping("/user/add")
     public Result<?> add(@Valid @RequestBody BankUser bankUser){
         int res = bankUserMapper.insert(bankUser);
@@ -80,16 +84,16 @@ public class BankUserController {
             return Result.sucess();
         return Result.error(400,"添加错误");
     }
+
     @PostMapping("/user/update")
     public Result<?> update(@Valid @RequestBody BankUser bankUser){
         bankUserMapper.updateById(bankUser);
         return Result.sucess("更新成功");
     }
+
     @GetMapping("/user/get/{id}")
     public Result<?> getById(@PathVariable Integer id){
         BankUser bankUser = bankUserMapper.selectById(id);
-//        if(bankUser!=null)
-            return Result.sucess(bankUser);
-//        return Result.error(400,"没有此用户");
+        return Result.sucess(bankUser);
     }
 }

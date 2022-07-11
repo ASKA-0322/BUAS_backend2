@@ -8,12 +8,14 @@ import com.sun.xml.internal.ws.api.model.MEP;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 import java.io.Serializable;
 
 @Data
 @TableName("user_info")
 public class UserInfo implements Serializable {
-    @TableId(type= IdType.AUTO)
+    @TableId(type= IdType.INPUT)
+    @Size(min=8,max=8,message = "银行卡号为8位")
     private Integer id;
     @NotBlank(message = "账号不能为空")
     private String username;

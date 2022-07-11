@@ -21,6 +21,11 @@ public class UserServiceImpl extends ServiceImpl<UserInfoMapper,UserInfo> implem
 
     @Override
     public String register(UserInfo userInfo) {
+        QueryWrapper<UserInfo> wrapper1 = new QueryWrapper<>();
+        wrapper1.eq("id",userInfo.getId());
+        UserInfo temp1 = userInfoMapper.selectOne(wrapper1);
+        if(temp1!=null)
+            return "error";
         QueryWrapper<UserInfo> wrapper = new QueryWrapper<>();
         wrapper.eq("username",userInfo.getUsername());
         UserInfo temp = userInfoMapper.selectOne(wrapper);

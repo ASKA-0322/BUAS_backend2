@@ -62,4 +62,14 @@ public class BankUser implements Serializable {
     @NotBlank(message = "商品类别不能为空")
     @TableField("commodity_category")
     private String commodityCategory;
+
+    public BankUser(UserInfo userInfo){
+        this.userId = userInfo.getId();
+        this.name = userInfo.getName();
+        this.sex = userInfo.getSex();
+        this.age = userInfo.getAge();
+        this.creditCards = userInfo.getCreditCards();
+        this.area = userInfo.getArea();
+    }
+    public BankUser(){}
 }
