@@ -1,94 +1,116 @@
 package com.buas_team.buas_backend2.shiro;
 
-import cn.hutool.json.JSONUtil;
 import com.buas_team.buas_backend2.common.Result;
-import com.buas_team.buas_backend2.util.JwtUtils;
-import io.jsonwebtoken.Claims;
-import org.apache.shiro.authc.AuthenticationException;
-import org.apache.shiro.authc.AuthenticationToken;
-import org.apache.shiro.authc.ExpiredCredentialsException;
-import org.apache.shiro.web.filter.authc.AuthenticatingFilter;
+import com.buas_team.buas_backend2.util.JwtUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.ShiroException;
+import org.apache.shiro.authc.*;
+import org.apache.shiro.web.filter.authc.BasicHttpAuthenticationFilter;
 import org.apache.shiro.web.util.WebUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.RequestMethod;
 
-import javax.annotation.Resource;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 
+
+@Slf4j
 @Component
-public class JwtFilter extends AuthenticatingFilter {
-    @Resource
-    JwtUtils jwtUtils;
+public class JwtFilter extends BasicHttpAuthenticationFilter{
+
+    //token验证
     @Override
-    protected AuthenticationToken createToken(ServletRequest servletRequest, ServletResponse servletResponse) throws Exception {
-        HttpServletRequest request = (HttpServletRequest)servletRequest;
-        //获取头部token
-        String jwt = request.getHeader("Authorization");
-        if(StringUtils.isEmpty(jwt)){
-            return null;
-        }
-        return new JwtToken(jwt);
-    }
-
-    //拦截校验  header没有authorization直接通过，有的时候检验jwt的有效性
-    @Override
-    protected boolean onAccessDenied(ServletRequest servletRequest, ServletResponse servletResponse) throws Exception {
-        HttpServletRequest request = (HttpServletRequest)servletRequest;
-        //获取头部token
-        String jwt = request.getHeader("Authorization");
-        if(StringUtils.isEmpty(jwt)){
-            return true;
-        }else{
-//            校验jwt
-            Claims claims = jwtUtils.getClaimByToken(jwt);
-            //校验是否为空和时间是否过期
-            if(claims == null || jwtUtils.isTokenExpired(claims.getExpiration())){
-                throw new ExpiredCredentialsException("token已失效,请重新登录");
-            }
-            //执行登录
-            return executeLogin(servletRequest,servletResponse);
-        }
-    }
-    //登录出现异常进行处理
-    @Override
-    protected boolean onLoginFailure(AuthenticationToken token, AuthenticationException e, ServletRequest request, ServletResponse response) {
-        HttpServletResponse httpServletResponse = (HttpServletResponse) response;
-
-        Throwable throwable = e.getCause() == null ? e : e.getCause();
-
-        Result result = Result.error(400,throwable.getMessage());
-        //返回json
-        String json = JSONUtil.toJsonStr(result);
-        try {
-            //打印json
-            httpServletResponse.getWriter().print(json);
-        }catch (IOException ioException){
-
-        }
-
-        return false;
-    }
-
-    //跨域处理 前置拦截避免未进入controller被拦截
-    @Override
-    protected boolean preHandle(ServletRequest request, ServletResponse response) throws Exception {
-        HttpServletRequest httpServletRequest = WebUtils.toHttp(request);
-        HttpServletResponse httpServletResponse = WebUtils.toHttp(response);
-        httpServletResponse.setHeader("Access-control-Allow-Origin", httpServletRequest.getHeader("Origin"));
-        httpServletResponse.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS,PUT,DELETE");
-        httpServletResponse.setHeader("Access-Control-Allow-Headers", httpServletRequest.getHeader("Access-Control-Request-Headers"));
-        //给OPTIONS请求直接返回正常状态
-        if (httpServletRequest.getMethod().equals(RequestMethod.OPTIONS.name())) {
-            httpServletResponse.setStatus(org.springframework.http.HttpStatus.OK.value());
+    protected boolean executeLogin(ServletRequest request, ServletResponse response) throws Exception {
+        //在请求头中获取token
+        HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+        String token = httpServletRequest.getHeader("Authorization"); //前端命名Authorization
+        //token不存在
+        if(token == null || "".equals(token)){
+            Result<Object> res = new Result<>();
+            res.setCode(400);
+            res.setMsg("没有token");
+            out(response, res);
             return false;
         }
-        return super.preHandle(request, response);
+        log.info("in executeLogin.....");
+        //token存在，进行验证
+        JwtToken jwtToken = new JwtToken(token);
+        try {
+            SecurityUtils.getSubject().login(jwtToken);  //通过subject，提交给myRealm进行登录验证
+
+            return true;
+        } catch (ExpiredCredentialsException e){
+            Result<Object> res = new Result<>();
+            res.setCode(400);
+            res.setMsg("token过期");
+            e.printStackTrace();
+            return false;
+        } catch (ShiroException e){
+            // 其他情况抛出的异常统一处理，由于先前是登录进去的了，所以都可以看成是token被伪造造成的
+            Result<Object> res = new Result<>();
+            res.setCode(400);
+            res.setMsg("token被伪造");
+            out(response,res);
+            e.printStackTrace();
+            return false;
+        }
     }
 
 
+     // json形式返回结果token验证失败信息，无需转发
+    private void out(ServletResponse response, Result<?> res) throws IOException {
+        HttpServletResponse httpServletResponse = WebUtils.toHttp(response);
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonRes = mapper.writeValueAsString(res);
+        httpServletResponse.setCharacterEncoding("UTF-8");
+        httpServletResponse.setContentType("application/json; charset=utf-8");
+        httpServletResponse.getOutputStream().write(jsonRes.getBytes());
+    }
+
+    /**
+     * 过滤器拦截请求的入口方法
+     */
+    @Override
+    protected boolean isAccessAllowed(ServletRequest request, ServletResponse response, Object mappedValue) {
+        log.info("in isAccessAllowed");
+        HttpServletRequest httpRequest = (HttpServletRequest)request;
+        try {
+            log.info("try");
+            String jwt = httpRequest.getHeader("Authorization");
+            log.info(jwt);
+            if(StringUtils.isEmpty(jwt))
+                return false;
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * isAccessAllowed()方法返回false，即认证不通过时进入onAccessDenied方法
+     */
+    @Override
+    protected boolean onAccessDenied(ServletRequest request, ServletResponse response) throws Exception {
+        log.info("in onAccessDenied");
+        boolean res = executeLogin(request,response);
+        return res;
+    }
+
+    /**
+     * token认证executeLogin成功后，进入此方法，可以进行token更新过期时间
+     */
+//    @Override
+//    protected boolean onLoginSuccess(AuthenticationToken token, Subject subject, ServletRequest request, ServletResponse response) throws Exception {
+
+//    }
 }
+
+

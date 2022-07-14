@@ -62,9 +62,9 @@ public class BankUserController {
                             @PathVariable Integer pageSize,
                             @RequestBody BankUserVO bankUserVO){
         QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
-        wrapper.eq(bankUserVO.getUserId()!=null,"user_id",bankUserVO.getUserId());
-        wrapper.eq(StringUtils.isNotBlank(bankUserVO.getName()),"name",bankUserVO.getName());
-        wrapper.eq(StringUtils.isNotBlank(bankUserVO.getArea()),"area",bankUserVO.getArea());
+        wrapper.like(bankUserVO.getUserId()!=null,"user_id",bankUserVO.getUserId());
+        wrapper.like(StringUtils.isNotBlank(bankUserVO.getName()),"name",bankUserVO.getName());
+        wrapper.like(StringUtils.isNotBlank(bankUserVO.getArea()),"area",bankUserVO.getArea());
         IPage<BankUser> bankUserIpage = bankUserService.page(new Page<>(page,pageSize),wrapper);
         return Result.sucess(bankUserIpage);
     }

@@ -1,8 +1,10 @@
 package com.buas_team.buas_backend2.controller;
 
+import cn.hutool.core.map.MapUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
+import com.baomidou.mybatisplus.extension.api.R;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.buas_team.buas_backend2.common.Result;
 import com.buas_team.buas_backend2.dto.BankUserDTO;
@@ -10,19 +12,23 @@ import com.buas_team.buas_backend2.dto.UserDTO;
 import com.buas_team.buas_backend2.entity.BankUser;
 import com.buas_team.buas_backend2.entity.UserInfo;
 import com.buas_team.buas_backend2.mapper.BankUserMapper;
+import com.buas_team.buas_backend2.mapper.UserInfoMapper;
 import com.buas_team.buas_backend2.service.BankUserService;
 import com.buas_team.buas_backend2.service.UserService;
-import com.buas_team.buas_backend2.util.JwtUtils;
+import com.buas_team.buas_backend2.shiro.JwtToken;
+import com.buas_team.buas_backend2.util.JwtUtil;
 import com.buas_team.buas_backend2.util.MD5Util;
 import com.buas_team.buas_backend2.util.ShiroUtil;
 import com.buas_team.buas_backend2.vo.UserInfoVO;
 import com.google.code.kaptcha.Constants;
 import jdk.nashorn.internal.ir.BaseNode;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.authc.UsernamePasswordToken;
+import org.apache.shiro.authc.*;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.subject.Subject;
+import org.python.antlr.op.Sub;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +41,7 @@ import java.util.Map;
 
 @RestController
 @CrossOrigin
+@Slf4j
 public class UserController {
     @Resource
     private UserService userService;
@@ -45,10 +52,10 @@ public class UserController {
     @Resource
     private RedisTemplate redisTemplate;
     @Resource
-    private JwtUtils jwtUtils;
+    private UserInfoMapper userInfoMapper;
 
 
-    @GetMapping("/get-user")
+    @GetMapping("/userinfo/get-user")
     @ResponseBody
     public UserInfo getUser(){
         return ShiroUtil.getUser();
@@ -65,25 +72,49 @@ public class UserController {
         } else {
             return Result.error(400, "验证码错误");
         }
+
+        log.info("登录中。。。。");
+        QueryWrapper<UserInfo> wrapper = new QueryWrapper<>();
+        wrapper.eq("username",userDTO.getUsername());
+        UserInfo userInfo = userInfoMapper.selectOne(wrapper);
+        if(userInfo==null)
+            return Result.error(400,"没有此用户");
+
+        String Md5Password = MD5Util.MD5Encode(userDTO.getPassword(),"UTF-8");
+        String token = JwtUtil.getJwtToken(userDTO.getUsername(),Md5Password);
+        JwtToken jwtToken = new JwtToken(token);
+
         Subject subject = SecurityUtils.getSubject();
-        Session session = subject.getSession();
 
-        String Md5Password = MD5Util.MD5Encode(userDTO.getPassword(), "UTF-8");
-        UsernamePasswordToken token = new UsernamePasswordToken(userDTO.getUsername(), Md5Password);
-        subject.login(token);  //会去调用userrealm的认证方法
-        session.setTimeout(200000000L);
-        String jwt = jwtUtils.generateToken(ShiroUtil.getUser().getId());//生成token
-        response.setHeader("Authorization",jwt);
-        response.setHeader("Access-Control-Expose-Headers","Authorization");
-
-        Map<String, String> res = new HashMap<String,String>(){{
-            put("username",userDTO.getUsername());
-            put("jwt",jwt);
-        }};
-        return Result.sucess(res);
+        Result<Object> res = new Result<>();
+        try{
+            subject.login(jwtToken);
+            res.setCode(200);
+            res.setMsg("成功");
+            res.setData(MapUtil.builder().put("username",userDTO.getUsername())
+                                        .put("jwt",token)
+                                        .map());
+            log.info(String.valueOf(SecurityUtils.getSubject().isAuthenticated()));
+        }
+        catch (UnknownAccountException e){
+            res.setCode(400);
+            res.setMsg("用户不存在");
+            e.printStackTrace();
+        }
+        catch (IncorrectCredentialsException e){
+            res.setCode(400);
+            res.setMsg("密码错误");
+            e.printStackTrace();
+        }
+        catch (ExpiredCredentialsException e){
+            res.setCode(400);
+            res.setMsg("token过期");
+        }
+        finally{
+            return res;
+        }
     }
 
-    @RequiresAuthentication
     @PostMapping("/userinfo/register")
     public Result<?> register(@Valid @RequestBody UserInfo userInfo){
         String res = userService.register(userInfo);
@@ -172,6 +203,7 @@ public class UserController {
     @GetMapping("/userinfo/get")
     public Result<?> get(@RequestParam Integer page,
                          @RequestParam Integer pageSize){
+
         QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id",ShiroUtil.getUser().getId());
         IPage<BankUser> ipage = bankUserService.page(new Page<>(page,pageSize),wrapper);

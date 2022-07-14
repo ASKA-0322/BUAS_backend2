@@ -1,5 +1,6 @@
 package com.buas_team.buas_backend2.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -12,6 +13,11 @@ public class CrossConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowedMethods("*")
                 .maxAge(1800)
-                .allowedOrigins("*");
+                .allowedOrigins("*")
+                .allowCredentials(true);
+    }
+    @Bean
+    CorsInterceptor corsInterceptor(){
+        return new CorsInterceptor();
     }
 }

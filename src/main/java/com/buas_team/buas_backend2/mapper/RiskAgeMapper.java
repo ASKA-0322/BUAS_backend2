@@ -6,8 +6,8 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 
 public interface RiskAgeMapper {
-    @Select("SELECT age,grade " +
-            "FROM bankuser,risk_assess " +
-            "where bankuser.user_id = risk_assess.user_id")
+    @Select("SELECT age,index_mark " +
+            "FROM risk_assess,(select distinct user_id,age from bankuser) t " +
+            "where t.user_id = risk_assess.user_id")
     List<RiskAgeVO> getAll();
 }

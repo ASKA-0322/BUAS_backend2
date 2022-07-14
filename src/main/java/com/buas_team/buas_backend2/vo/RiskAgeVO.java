@@ -8,5 +8,5 @@ import java.io.Serializable;
 @Data
 public class RiskAgeVO implements Serializable {
     private Integer age;
-    private Integer grade;
+    private Double indexMark;
 }

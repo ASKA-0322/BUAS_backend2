@@ -8,7 +8,6 @@ public class CaptchaUtils {
     private static final int WIDTH = 300;
     private static final int HEIGHT = 75;
 
-
      //传入BufferedImage对象，并将生成好的验证码保存到BufferedImage中
     public static String drawRandomText(BufferedImage bufferedImage) {
         Graphics2D graphics = (Graphics2D) bufferedImage.getGraphics();

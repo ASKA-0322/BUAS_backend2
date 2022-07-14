@@ -8,5 +8,7 @@ import java.io.Serializable;
 @Data
 public class RiskGenerationVO implements Serializable {
     private String generation ;
-    private Integer amount;
+    private Integer low;
+    private Integer mid;
+    private Integer high;
 }
