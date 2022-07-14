@@ -10,6 +10,7 @@ import com.buas_team.buas_backend2.mapper.BankUserMapper;
 import com.buas_team.buas_backend2.mapper.UserInfoMapper;
 import com.buas_team.buas_backend2.service.BankUserService;
 import com.buas_team.buas_backend2.util.ShiroUtil;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -26,9 +27,12 @@ public class BankUserServiceImpl extends ServiceImpl<BankUserMapper,BankUser> im
     @Resource
     private BankUserMapper bankUserMapper;
 
+    @Resource
+    private RedisTemplate redisTemplate;
+
     @Override
-    public int add(BankUserDTO bankUserDTO) {
-        UserInfo userInfo = ShiroUtil.getUser();
+    public int add(BankUserDTO bankUserDTO,String token) {
+        UserInfo userInfo = (UserInfo) redisTemplate.opsForValue().get(token);
         BankUser bankUser = new BankUser(userInfo);
         bankUser.setConsumptionArea(bankUserDTO.getConsumptionArea());
         bankUser.setConsumptionAmount(bankUserDTO.getConsumptionAmount());

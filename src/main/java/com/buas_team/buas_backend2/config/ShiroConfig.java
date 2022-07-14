@@ -68,9 +68,9 @@ public class ShiroConfig {
 
         //配置系统的受限资源以及对应的过滤器
         Map<String, String> ruleMap = new LinkedHashMap<>();
-        ruleMap.put("/userinfo/login", "anon"); //登录注册不进行拦截
-        ruleMap.put("/userinfo/register", "anon");
-        ruleMap.put("/userinfo/**", "jwt");  // /** 对所有资源进行拦截
+//        ruleMap.put("/userinfo/login", "anon"); //登录注册不进行拦截
+//        ruleMap.put("/userinfo/register", "anon");
+//        ruleMap.put("/userinfo/**", "jwt");  // /** 对所有资源进行拦截
         shiroFilterFactoryBean.setFilterChainDefinitionMap(ruleMap);
         shiroFilterFactoryBean.setUnauthorizedUrl("url");
         return shiroFilterFactoryBean;
@@ -105,7 +105,7 @@ public class ShiroConfig {
     public ShiroFilterChainDefinition shiroFilterChainDefinition() {
         DefaultShiroFilterChainDefinition chainDefinition = new DefaultShiroFilterChainDefinition();
         Map<String, String> filterMap = new LinkedHashMap<>();
-        filterMap.put("/userinfo/**", "jwt"); // 主要通过注解方式校验权限
+        //filterMap.put("/userinfo/**", "jwt"); // 主要通过注解方式校验权限
         chainDefinition.addPathDefinitions(filterMap);
         return chainDefinition;
     }

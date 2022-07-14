@@ -38,6 +38,7 @@ import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @CrossOrigin
@@ -74,12 +75,12 @@ public class UserController {
         }
 
         log.info("登录中。。。。");
+
         QueryWrapper<UserInfo> wrapper = new QueryWrapper<>();
         wrapper.eq("username",userDTO.getUsername());
         UserInfo userInfo = userInfoMapper.selectOne(wrapper);
         if(userInfo==null)
             return Result.error(400,"没有此用户");
-
         String Md5Password = MD5Util.MD5Encode(userDTO.getPassword(),"UTF-8");
         String token = JwtUtil.getJwtToken(userDTO.getUsername(),Md5Password);
         JwtToken jwtToken = new JwtToken(token);
@@ -95,6 +96,9 @@ public class UserController {
                                         .put("jwt",token)
                                         .map());
             log.info(String.valueOf(SecurityUtils.getSubject().isAuthenticated()));
+
+            //test
+            redisTemplate.opsForValue().set(token,userInfo,1, TimeUnit.DAYS);
         }
         catch (UnknownAccountException e){
             res.setCode(400);
@@ -164,10 +168,10 @@ public class UserController {
         return Result.sucess(bankUserList);
     }
 
-    @RequiresAuthentication
-    @PostMapping("/userinfo/{page}/{pageSize}")
+    @PostMapping("/userinfo/{page}/{pageSize}/{token}")
     public Result<?> selectInfo(@PathVariable Integer page,
                                 @PathVariable Integer pageSize,
+                                @PathVariable String token,
                                 @RequestBody UserInfoVO userInfoVO){
         QueryWrapper<BankUser> wrapper = new QueryWrapper<>();
         wrapper.eq(StringUtils.isNotBlank(userInfoVO.getConsumptionArea()),
@@ -178,19 +182,18 @@ public class UserController {
                 "pay_time",userInfoVO.getPayTime());
         wrapper.eq(StringUtils.isNotBlank(userInfoVO.getCommodityCategory()),
                 "commodity_category",userInfoVO.getCommodityCategory());
-        wrapper.eq("user_id",ShiroUtil.getUser().getId());
+        UserInfo userInfo = (UserInfo) redisTemplate.opsForValue().get(token);
+        wrapper.eq("user_id",userInfo.getId());
         IPage<BankUser> ipage = bankUserService.page(new Page<>(page,pageSize),wrapper);
         return Result.sucess(ipage);
     }
 
-    @RequiresAuthentication
     @PostMapping("/userinfo/update")
     public Result<?> updateInfo(@Valid @RequestBody BankUser bankUser){
         int res = bankUserMapper.updateById(bankUser);
         return Result.sucess("更新成功");
     }
 
-    @RequiresAuthentication
     @PostMapping("/userinfo/del/{id}")
     public Result<?> del(@PathVariable Integer id){
         int res = bankUserMapper.deleteById(id);
@@ -199,7 +202,6 @@ public class UserController {
         return Result.error(400,"删除失败");
     }
 
-    @RequiresAuthentication
     @GetMapping("/userinfo/get")
     public Result<?> get(@RequestParam Integer page,
                          @RequestParam Integer pageSize){
@@ -210,19 +212,18 @@ public class UserController {
         return Result.sucess(ipage);
     }
 
-    @RequiresAuthentication
-    @PostMapping("/userinfo/add")
-    public Result<?> add(@Valid @RequestBody BankUserDTO bankUserDTO){
-        int res = bankUserService.add(bankUserDTO);
+    @PostMapping("/userinfo/add/{token}")
+    public Result<?> add(@Valid @RequestBody BankUserDTO bankUserDTO,
+                         @PathVariable String token){
+        int res = bankUserService.add(bankUserDTO,token);
         if(res>0)
             return Result.sucess();
         return Result.error(400,"添加错误");
     }
 
-    @RequiresAuthentication
-    @GetMapping("/userinfo/logout")
-    public Result logout(){
-        SecurityUtils.getSubject().logout();
+    @GetMapping("/userinfo/logout/{token}")
+    public Result logout(@PathVariable String token){
+        redisTemplate.delete(token);
         return Result.sucess();
     }
 }

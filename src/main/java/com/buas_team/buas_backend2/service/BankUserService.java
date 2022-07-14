@@ -7,5 +7,5 @@ import com.buas_team.buas_backend2.entity.BankUser;
 
 
 public interface BankUserService extends IService<BankUser> {
-    int add(BankUserDTO bankUserDTO);
+    int add(BankUserDTO bankUserDTO,String token);
 }
