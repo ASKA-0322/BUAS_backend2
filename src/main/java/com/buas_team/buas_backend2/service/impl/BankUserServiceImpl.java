@@ -34,11 +34,13 @@ public class BankUserServiceImpl extends ServiceImpl<BankUserMapper,BankUser> im
     public int add(BankUserDTO bankUserDTO,String token) {
         UserInfo userInfo = (UserInfo) redisTemplate.opsForValue().get(token);
         BankUser bankUser = new BankUser(userInfo);
+
         bankUser.setConsumptionArea(bankUserDTO.getConsumptionArea());
         bankUser.setConsumptionAmount(bankUserDTO.getConsumptionAmount());
         bankUser.setPayMethod(bankUserDTO.getPayMethod());
         bankUser.setCommodityCategory(bankUserDTO.getCommodityCategory());
         bankUser.setPayTime(bankUserDTO.getPayTime());
+
         int res = bankUserMapper.insert(bankUser);
         return res;
     }
